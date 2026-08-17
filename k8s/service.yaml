@@ -1,0 +1,13 @@
+# STEP 6b: Exposes the Deployment via an AWS ALB / NLB (LoadBalancer type
+# provisions a real AWS load balancer since this runs on EKS).
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-app-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: demo-app
+  ports:
+    - port: 80
+      targetPort: 8080

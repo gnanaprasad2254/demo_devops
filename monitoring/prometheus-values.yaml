@@ -1,0 +1,30 @@
+# STEP 7: Helm values for the kube-prometheus-stack chart, which installs
+# Prometheus + Grafana + Alertmanager onto the EKS cluster in one shot.
+#
+# Install with:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm install monitoring prometheus-community/kube-prometheus-stack \
+#     -f monitoring/prometheus-values.yaml -n monitoring --create-namespace
+
+grafana:
+  enabled: true
+  adminPassword: "changeme"
+  service:
+    type: LoadBalancer
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    retention: 15d
+
+# Auto-discovers any pod annotated with prometheus.io/scrape: "true"
+# (that's why deployment.yaml above has those annotations on demo-app)
+additionalScrapeConfigs:
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true

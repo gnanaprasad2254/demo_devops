@@ -1,0 +1,43 @@
+# STEP 1a: CloudFormation - creates the S3 bucket + DynamoDB table
+# Terraform uses this as its remote state backend + lock table.
+# Deploy FIRST, before running any Terraform:
+#   aws cloudformation deploy --template-file terraform-backend.yaml \
+#     --stack-name terraform-backend --region us-east-1
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: S3 bucket and DynamoDB table for Terraform remote state
+
+Resources:
+  TerraformStateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "devops-pipeline-tf-state-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  TerraformLockTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: devops-pipeline-tf-lock
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: LockID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: LockID
+          KeyType: HASH
+
+Outputs:
+  BucketName:
+    Value: !Ref TerraformStateBucket
+  LockTableName:
+    Value: !Ref TerraformLockTable

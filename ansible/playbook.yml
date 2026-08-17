@@ -1,0 +1,105 @@
+# STEP 3b: Configures the EC2 box Terraform created - installs Java,
+# Jenkins, Docker, Nexus, and the Prometheus/Grafana stack.
+# Run with: ansible-playbook -i inventory.ini playbook.yml
+
+- name: Configure CI/CD server
+  hosts: cicd_server
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Java 17 (required by Jenkins/Nexus/Maven)
+      apt:
+        name: openjdk-17-jdk
+        state: present
+
+    - name: Add Jenkins apt key
+      apt_key:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        state: present
+
+    - name: Add Jenkins repo
+      apt_repository:
+        repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+        update_cache: yes
+
+    - name: Start and enable Jenkins
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Add jenkins user to docker group
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install Maven
+      apt:
+        name: maven
+        state: present
+
+    - name: Create Nexus directory
+      file:
+        path: /opt/nexus
+        state: directory
+
+    - name: Run Nexus in Docker
+      docker_container:
+        name: nexus
+        image: sonatype/nexus3:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "8081:8081"
+          - "8082:8082"  # docker registry port (configure in Nexus UI)
+        volumes:
+          - /opt/nexus/data:/nexus-data
+
+    - name: Run Grafana in Docker
+      docker_container:
+        name: grafana
+        image: grafana/grafana:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "3000:3000"
+
+    - name: Install kubectl
+      shell: |
+        curl -LO "https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl"
+        install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+      args:
+        creates: /usr/local/bin/kubectl
+
+    - name: Install Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Install AWS CLI
+      apt:
+        name: awscli
+        state: present
