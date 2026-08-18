@@ -5,8 +5,8 @@ pipeline {
     agent any
 
     environment {
-        NEXUS_URL       = "<CICD_SERVER_IP>:8081"
-        NEXUS_DOCKER    = "<CICD_SERVER_IP>:8082"
+        NEXUS_URL       = "3.238.188.142:8081"
+        NEXUS_DOCKER    = "3.238.188.142:8082"
         IMAGE_NAME      = "demo-app"
         IMAGE_TAG       = "${env.BUILD_NUMBER}"
         EKS_CLUSTER     = "devops-pipeline-eks"
@@ -16,7 +16,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/<your-org>/<your-repo>.git'
+                git branch: 'main', url: 'https://github.com/gnanaprasad2254/demo_devops.git'
             }
         }
 
