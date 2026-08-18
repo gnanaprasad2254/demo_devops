@@ -1,84 +1,134 @@
-# STEP 3b: Configures the EC2 box Terraform created - installs Java,
-# Jenkins, Docker, Nexus, and the Prometheus/Grafana stack.
-# Run with: ansible-playbook -i inventory.ini playbook.yml
+# STEP 3b: Configures the Amazon Linux EC2 box Terraform created.
+# Installs Java, Jenkins, Docker, Maven, Nexus, Grafana, kubectl,
+# Helm, and AWS CLI.
+#
+# Run with:
+# ansible-playbook -i inventory.ini playbook.yml
 
 - name: Configure CI/CD server
   hosts: cicd_server
   become: true
 
+  collections:
+    - community.docker
+
   tasks:
-    - name: Update apt cache
-      apt:
-        update_cache: yes
 
-    - name: Install Java 17 (required by Jenkins/Nexus/Maven)
-      apt:
-        name: openjdk-17-jdk
+    # ---------------------------------------------------------
+    # SYSTEM UPDATE
+    # ---------------------------------------------------------
+
+    - name: Update DNF packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: true
+
+    # ---------------------------------------------------------
+    # BASIC PACKAGES
+    # ---------------------------------------------------------
+
+    - name: Install required packages
+      ansible.builtin.dnf:
+        name:
+          - wget
+          - unzip
+          - git
+          - tar
+          - gzip
+          - fontconfig
+          - java-21-amazon-corretto
+          - maven
+          - docker
         state: present
 
-    - name: Add Jenkins apt key
-      apt_key:
-        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
-        state: present
+    - name: Install AWS CLI v2 via official installer
+      ansible.builtin.shell: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+        unzip -q /tmp/awscliv2.zip -d /tmp
+        /tmp/aws/install --update
+        rm -rf /tmp/awscliv2.zip /tmp/aws
+      args:
+        creates: /usr/local/bin/aws
 
-    - name: Add Jenkins repo
-      apt_repository:
-        repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+    # ---------------------------------------------------------
+    # JENKINS
+    # ---------------------------------------------------------
+
+    - name: Download Jenkins RPM repository
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/rpm-stable/jenkins.repo
+        dest: /etc/yum.repos.d/jenkins.repo
+        mode: "0644"
+
+    - name: Import Jenkins repository signing key
+      ansible.builtin.rpm_key:
         state: present
+        key: https://pkg.jenkins.io/rpm-stable/jenkins.io-2026.key
 
     - name: Install Jenkins
-      apt:
+      ansible.builtin.dnf:
         name: jenkins
         state: present
-        update_cache: yes
 
     - name: Start and enable Jenkins
-      systemd:
+      ansible.builtin.systemd:
         name: jenkins
         state: started
-        enabled: yes
+        enabled: true
 
-    - name: Install Docker
-      apt:
-        name: docker.io
-        state: present
-
-    - name: Add jenkins user to docker group
-      user:
-        name: jenkins
-        groups: docker
-        append: yes
+    # ---------------------------------------------------------
+    # DOCKER
+    # ---------------------------------------------------------
 
     - name: Start and enable Docker
-      systemd:
+      ansible.builtin.systemd:
         name: docker
         state: started
-        enabled: yes
+        enabled: true
 
-    - name: Install Maven
-      apt:
-        name: maven
-        state: present
+    - name: Add Jenkins user to Docker group
+      ansible.builtin.user:
+        name: jenkins
+        groups: docker
+        append: true
 
-    - name: Create Nexus directory
-      file:
-        path: /opt/nexus
+    - name: Add ec2-user to Docker group
+      ansible.builtin.user:
+        name: ec2-user
+        groups: docker
+        append: true
+
+    # ---------------------------------------------------------
+    # NEXUS
+    # ---------------------------------------------------------
+
+    - name: Create Nexus data directory
+      ansible.builtin.file:
+        path: /opt/nexus/data
         state: directory
+        owner: "200"
+        group: "200"
+        mode: "0755"
 
     - name: Run Nexus in Docker
-      docker_container:
+      community.docker.docker_container:
         name: nexus
         image: sonatype/nexus3:latest
         state: started
         restart_policy: always
         ports:
           - "8081:8081"
-          - "8082:8082"  # docker registry port (configure in Nexus UI)
+          - "8082:8082"
         volumes:
           - /opt/nexus/data:/nexus-data
 
+    # ---------------------------------------------------------
+    # GRAFANA
+    # ---------------------------------------------------------
+
     - name: Run Grafana in Docker
-      docker_container:
+      community.docker.docker_container:
         name: grafana
         image: grafana/grafana:latest
         state: started
@@ -86,20 +136,60 @@
         ports:
           - "3000:3000"
 
-    - name: Install kubectl
-      shell: |
-        curl -LO "https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl"
-        install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-      args:
-        creates: /usr/local/bin/kubectl
+    # ---------------------------------------------------------
+    # KUBECTL
+    # ---------------------------------------------------------
 
-    - name: Install Helm
-      shell: |
-        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    - name: Download kubectl
+      ansible.builtin.get_url:
+        url: https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: "0755"
+
+    # ---------------------------------------------------------
+    # HELM
+    # ---------------------------------------------------------
+
+    - name: Download Helm binary
+      ansible.builtin.get_url:
+        url: https://get.helm.sh/helm-v3.17.0-linux-amd64.tar.gz
+        dest: /tmp/helm.tar.gz
+        mode: "0644"
+
+    - name: Extract and install Helm
+      ansible.builtin.shell: |
+        tar -xzf /tmp/helm.tar.gz -C /tmp
+        mv /tmp/linux-amd64/helm /usr/local/bin/helm
+        rm -rf /tmp/helm.tar.gz /tmp/linux-amd64
       args:
         creates: /usr/local/bin/helm
 
-    - name: Install AWS CLI
-      apt:
-        name: awscli
-        state: present
+    # ---------------------------------------------------------
+    # FINAL CHECKS
+    # ---------------------------------------------------------
+
+    - name: Check Docker installation
+      ansible.builtin.command:
+        cmd: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Check Java installation
+      ansible.builtin.command:
+        cmd: java -version
+      register: java_version
+      changed_when: false
+
+    - name: Check Maven installation
+      ansible.builtin.command:
+        cmd: mvn --version
+      register: maven_version
+      changed_when: false
+
+    - name: Display Docker version
+      ansible.builtin.debug:
+        var: docker_version.stdout
+
+    - name: Display Maven version
+      ansible.builtin.debug:
+        var: maven_version.stdout

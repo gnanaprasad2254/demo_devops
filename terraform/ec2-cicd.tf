@@ -39,11 +39,11 @@ resource "aws_security_group" "cicd_sg" {
 }
 
 resource "aws_instance" "cicd_server" {
-  ami                    = "ami-0c101f26f147fa7fd" # Ubuntu 22.04 LTS, us-east-1 - check latest for your region
-  instance_type          = var.cicd_instance_type
-  subnet_id              = module.vpc.public_subnets[0]
-  key_name               = var.key_pair_name
-  vpc_security_group_ids = [aws_security_group.cicd_sg.id]
+  ami                         = "ami-0c101f26f147fa7fd" # Ubuntu 22.04 LTS, us-east-1 - check latest for your region
+  instance_type               = var.cicd_instance_type
+  subnet_id                   = module.vpc.public_subnets[0]
+  key_name                    = var.key_pair_name
+  vpc_security_group_ids      = [aws_security_group.cicd_sg.id]
   associate_public_ip_address = true
 
   tags = {

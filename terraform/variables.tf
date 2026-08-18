@@ -12,10 +12,11 @@ variable "vpc_cidr" {
 
 variable "cicd_instance_type" {
   description = "EC2 instance for Jenkins/Nexus/Prometheus/Grafana"
-  default     = "t3.large"
+  default     = "t3.small"
 }
 
 variable "key_pair_name" {
   description = "Existing EC2 key pair name for SSH access"
   type        = string
+  default     = "devops-demo-key"
 }

@@ -47,11 +47,11 @@
   <distributionManagement>
     <repository>
       <id>nexus</id>
-      <url>http://<CICD_SERVER_IP>:8081/repository/maven-releases/</url>
+      <url>http://3.238.188.142:8081/repository/devops-pipeline-cicd/</url>
     </repository>
     <snapshotRepository>
       <id>nexus</id>
-      <url>http://<CICD_SERVER_IP>:8081/repository/maven-snapshots/</url>
+      <url>http://3.238.188.142:8081/repository/devops-pipeline-cicd/</url>
     </snapshotRepository>
   </distributionManagement>
 </project>
