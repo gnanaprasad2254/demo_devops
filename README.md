@@ -68,3 +68,6 @@ Grafana dashboard is exposed via LoadBalancer on port 80; default login admin/ch
 | Jenkins (CI/CD glue) | `Jenkinsfile` |
 | Kubernetes / EKS | `k8s/deployment.yaml`, `k8s/service.yaml` |
 | Prometheus + Grafana | `monitoring/prometheus-values.yaml` |
+
+
+commit
