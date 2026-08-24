@@ -18,5 +18,5 @@ variable "cicd_instance_type" {
 variable "key_pair_name" {
   description = "Existing EC2 key pair name for SSH access"
   type        = string
-  default     = "devops-demo-key"
+  default     = "PY-Demo"
 }
