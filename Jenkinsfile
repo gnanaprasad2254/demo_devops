@@ -4,7 +4,7 @@ pipeline {
 
     environment {
         NEXUS_URL    = "44.201.48.31:8081"
-        NEXUS_DOCKER = "44.201.48.31:8082"
+        NEXUS_DOCKER = "localhost:8082"
         ECR_REGISTRY = "167667034424.dkr.ecr.us-east-1.amazonaws.com"
         IMAGE_NAME   = "demo-app"
         IMAGE_TAG    = "${env.BUILD_NUMBER}"
@@ -62,7 +62,7 @@ pipeline {
             steps {
                 sh '''
                     docker build \
-                        -t ${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} .
+                        -t ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG} .
                 '''
             }
         }
@@ -74,6 +74,9 @@ pipeline {
                         docker login \
                             --username AWS \
                             --password-stdin ${ECR_REGISTRY}
+
+                    docker tag ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG} \
+                        ${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
 
                     docker push \
                         ${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
@@ -92,9 +95,6 @@ pipeline {
                         echo "$NEXUS_PASSWORD" | docker login ${NEXUS_DOCKER} \
                             --username "$NEXUS_USERNAME" \
                             --password-stdin
-
-                        docker tag ${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} \
-                            ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG}
 
                         docker push ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG}
                     '''
