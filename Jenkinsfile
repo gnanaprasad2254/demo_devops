@@ -4,7 +4,7 @@ pipeline {
 
     environment {
         NEXUS_URL    = "3.238.188.142:8081"
-        NEXUS_DOCKER = "3.238.188.142:8082"
+        ECR_REGISTRY = "167667034424.dkr.ecr.us-east-1.amazonaws.com"
         IMAGE_NAME   = "demo-app"
         IMAGE_TAG    = "${env.BUILD_NUMBER}"
         EKS_CLUSTER  = "devops-pipeline-eks"
@@ -61,27 +61,22 @@ pipeline {
             steps {
                 sh '''
                     docker build \
-                        -t ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG} .
+                        -t ${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} .
                 '''
             }
         }
 
-        stage('Docker Push to Nexus') {
+        stage('Push to ECR') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'nexus-credentials',
-                    usernameVariable: 'NEXUS_USERNAME',
-                    passwordVariable: 'NEXUS_PASSWORD'
-                )]) {
+                sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login \
+                            --username AWS \
+                            --password-stdin ${ECR_REGISTRY}
 
-                    sh '''
-                        echo "$NEXUS_PASSWORD" | docker login ${NEXUS_DOCKER} \
-                            --username "$NEXUS_USERNAME" \
-                            --password-stdin
-
-                        docker push ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG}
-                    '''
-                }
+                    docker push \
+                        ${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                '''
             }
         }
 
@@ -93,7 +88,7 @@ pipeline {
                         --name ${EKS_CLUSTER}
 
                     sed -i \
-                        "s|IMAGE_PLACEHOLDER|${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG}|g" \
+                        "s|IMAGE_PLACEHOLDER|${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|g" \
                         k8s/deployment.yaml
 
                     kubectl apply -f k8s/deployment.yaml
