@@ -16,7 +16,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/gnanaprasad2254/demo_devops.git'
+                git branch: 'master', url: 'https://github.com/gnanaprasad2254/demo_devops.git'
             }
         }
 
