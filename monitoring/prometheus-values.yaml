@@ -9,8 +9,11 @@
 grafana:
   enabled: true
   adminPassword: "changeme"
+
   service:
     type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
 
 prometheus:
   prometheusSpec:
