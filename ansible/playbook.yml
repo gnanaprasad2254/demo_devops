@@ -123,18 +123,7 @@
         volumes:
           - /opt/nexus/data:/nexus-data
 
-    # ---------------------------------------------------------
-    # GRAFANA
-    # ---------------------------------------------------------
 
-    - name: Run Grafana in Docker
-      community.docker.docker_container:
-        name: grafana
-        image: grafana/grafana:latest
-        state: started
-        restart_policy: always
-        ports:
-          - "3000:3000"
 
     # ---------------------------------------------------------
     # KUBECTL
