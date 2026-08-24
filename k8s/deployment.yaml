@@ -1,16 +1,27 @@
-# STEP 6a: Kubernetes Deployment - Jenkins substitutes IMAGE_PLACEHOLDER
-# with the freshly-pushed ECR image tag before applying this.
+# STEP 6a: Kubernetes Deployment
+# Jenkins replaces IMAGE_PLACEHOLDER with the current ECR image.
+
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: demo-app
   labels:
     app: demo-app
+
 spec:
   replicas: 2
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+
   selector:
     matchLabels:
       app: demo-app
+
   template:
     metadata:
       labels:
@@ -19,12 +30,16 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/actuator/prometheus"
         prometheus.io/port: "8080"
+
     spec:
       containers:
         - name: demo-app
+
           image: IMAGE_PLACEHOLDER
+
           ports:
             - containerPort: 8080
+
           resources:
             requests:
               cpu: "250m"
@@ -32,6 +47,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
+
           livenessProbe:
             httpGet:
               path: /actuator/health
