@@ -3,7 +3,8 @@ pipeline {
     agent any
 
     environment {
-        NEXUS_URL    = "3.238.188.142:8081"
+        NEXUS_URL    = "44.201.48.31:8081"
+        NEXUS_DOCKER = "44.201.48.31:8082"
         ECR_REGISTRY = "167667034424.dkr.ecr.us-east-1.amazonaws.com"
         IMAGE_NAME   = "demo-app"
         IMAGE_TAG    = "${env.BUILD_NUMBER}"
@@ -77,6 +78,27 @@ pipeline {
                     docker push \
                         ${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
                 '''
+            }
+        }
+
+        stage('Push to Nexus Docker Registry') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-credentials',
+                    usernameVariable: 'NEXUS_USERNAME',
+                    passwordVariable: 'NEXUS_PASSWORD'
+                )]) {
+                    sh '''
+                        echo "$NEXUS_PASSWORD" | docker login ${NEXUS_DOCKER} \
+                            --username "$NEXUS_USERNAME" \
+                            --password-stdin
+
+                        docker tag ${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} \
+                            ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG}
+
+                        docker push ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    '''
+                }
             }
         }
 
