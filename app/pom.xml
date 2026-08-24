@@ -51,7 +51,7 @@
     </repository>
     <snapshotRepository>
       <id>nexus</id>
-      <url>http://3.238.188.142:8081/repository/devops-pipeline-cicd/</url>
+      <url>http://3.238.188.142:8081/repository/maven-snapshots/</url>
     </snapshotRepository>
   </distributionManagement>
 </project>
