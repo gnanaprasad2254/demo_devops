@@ -71,3 +71,5 @@ Grafana dashboard is exposed via LoadBalancer on port 80; default login admin/ch
 
 
 Webhook test 1
+
+Jenkins SCM test
